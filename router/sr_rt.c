@@ -104,10 +104,10 @@ struct in_addr gw, struct in_addr mask,char* if_name)
     {
         sr->routing_table = (struct sr_rt*)malloc(sizeof(struct sr_rt));
         assert(sr->routing_table);
+        sr->routing_table->mask = mask;
         sr->routing_table->next = 0;
         sr->routing_table->dest = dest;
         sr->routing_table->gw   = gw;
-        sr->routing_table->mask = mask;
         strncpy(sr->routing_table->interface,if_name,sr_IFACE_NAMELEN);
 
         return;
@@ -185,26 +185,27 @@ void sr_print_routing_entry(struct sr_rt* entry)
  *---------------------------------------------------------------------*/
 struct sr_rt *sr_longest_prefix_match(struct sr_instance* sr, struct in_addr addr)
 {
-	struct sr_rt* cur;
+	struct sr_rt* cursor;
 	struct sr_rt* lpm;
 	unsigned long lpm_len;
 	
-	cur = sr->routing_table;
+	cursor = sr->routing_table;
 	lpm_len = 0;
 	lpm = 0;
 	
-	/* Iterate through the interfaces and compare the masked addresses. If they are equal
-	 * then we found a match. We know it is longest if the netmask we used is greater
-	 * than the one used for the previous match. */
-	while(cur != 0) {
-		if (((cur->dest.s_addr & cur->mask.s_addr) == (addr.s_addr & cur->mask.s_addr)) &&
-			  (lpm_len <= cur->mask.s_addr)) {
+	/* Iterate through the interface. If addr matches, then we found a correct IP.
+    *  If the length of the mask is longer, then we found a longer prefix match
+    *  Iterate over all 
+    */
+	while(cursor != 0) {
+		if (((cursor->dest.s_addr & cursor->mask.s_addr) == (addr.s_addr & cursor->mask.s_addr)) &&
+			  (lpm_len <= cursor->mask.s_addr)) {
 			  
-			lpm_len = cur->mask.s_addr;
-			lpm = cur;
+			lpm_len = cursor->mask.s_addr;
+			lpm = cursor;
 		}
 		
-		cur = cur->next;
+		cursor = cursor->next;
 	}
 	
 	return lpm;

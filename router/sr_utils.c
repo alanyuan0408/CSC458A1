@@ -68,16 +68,6 @@ uint16_t arp_pro(struct sr_arp_hdr *arp_hdr)
 	return ntohs(arp_hdr->ar_pro);
 }
 
-/*---------------------------------------------------------------------
- * Utility method's related to processing ethernet packets. All take in
- * raw ethernet packet in network byte order and return host byte order.
- *---------------------------------------------------------------------*/
-uint16_t ethertype(uint8_t *buf) {
-  struct sr_ethernet_hdr *ehdr;
-  
-  ehdr = (struct sr_ethernet_hdr *)buf;
-  return ntohs(ehdr->ether_type);
-}
 
 uint8_t ip_protocol(uint8_t *buf) {
   struct sr_ip_hdr *iphdr;

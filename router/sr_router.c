@@ -86,6 +86,8 @@ void sr_init(struct sr_instance* sr)
     pthread_t thread;
 
     pthread_create(&thread, &(sr->attr), sr_arpcache_timeout, sr);
+
+    /* No other initialization required */
 } /* -- sr_init -- */
 
 /*---------------------------------------------------------------------
@@ -121,7 +123,10 @@ void sr_handlepacket(struct sr_instance* sr,
 		return;
 
   /* Handle ARP packet */
-	if (ethertype(packet) == ethertype_arp) {
+	struct sr_ethernet_hdr *ehdr;
+  	ehdr = (struct sr_ethernet_hdr *)buf;
+
+	if (ntohs(ehdr->ether_type) == ethertype_arp) {
 		process_arp(sr, packet, len, interface);
 
 	/* Handle IP packet */	
@@ -231,12 +236,12 @@ void sr_send_icmp(struct sr_instance* sr, uint8_t *packet, unsigned int len,
 	icmp_hdr_ptr->icmp_sum = cksum(icmp_hdr_ptr, icmp_len); 
 	
 	/* Encapsulate and send */
-	sr_encap_and_send_pkt(sr, new_pkt, total_len, dst, 0, ethertype_ip);
+	sr_add_ethheader(sr, new_pkt, total_len, dst, 0, ethertype_ip);
 	free(new_pkt);
 }
 
 /*---------------------------------------------------------------------
- * Method: sr_encap_and_send_pkt(struct sr_instance* sr, 
+ * Method: sr_add_ethheader(struct sr_instance* sr, 
  *						  							uint8_t *packet, 
  *						 		  					unsigned int len, 
  *						  	  					uint32_t dip,
@@ -252,7 +257,7 @@ void sr_send_icmp(struct sr_instance* sr, uint8_t *packet, unsigned int len,
  * sends it, otherwise it queues the packet and sends an ARP request. 
  *
  *---------------------------------------------------------------------*/
-void sr_encap_and_send_pkt(struct sr_instance* sr,
+void sr_add_ethheader(struct sr_instance* sr,
 						 	 					uint8_t *packet, 
 						 						unsigned int len, 
 						  					uint32_t dip,
@@ -399,7 +404,7 @@ void process_arp_request(struct sr_instance* sr,
 	memcpy(reply_arp_hdr.ar_sha, interface->addr, ETHER_ADDR_LEN);
 	
 	/* Encapsulate and attempt to send it. */
-	sr_encap_and_send_pkt(sr, 
+	sr_add_ethheader(sr, 
 					    		   (uint8_t *)&reply_arp_hdr, 
 					    			 sizeof(struct sr_arp_hdr), 
 					    			 arp_hdr->ar_sip,
@@ -430,7 +435,7 @@ void process_ip(struct sr_instance* sr,
 	
 	/* Is it destined for me?! */
 	ip_hdr = ip_header(packet);
-	if (sr_interface_ip_match(sr, ip_hdr->ip_dst)) {
+	if (sr_interface_get_ip(sr, ip_hdr->ip_dst)) {
 	
 		/* Process ICMP. */
 		if (ip_hdr->ip_p == ip_protocol_icmp) {
@@ -601,6 +606,6 @@ void forward_ip_pkt(struct sr_instance* sr, struct sr_ip_hdr *ip_hdr)
 	/* Make a copy, encapsulate and send it on. */
 	fwd_ip_pkt = malloc(len);
 	memcpy(fwd_ip_pkt, ip_hdr, len);
-	sr_encap_and_send_pkt(sr, fwd_ip_pkt, len, ip_hdr->ip_dst, 1, ethertype_ip);
+	sr_add_ethheader(sr, fwd_ip_pkt, len, ip_hdr->ip_dst, 1, ethertype_ip);
 	free(fwd_ip_pkt);
 }

@@ -17,13 +17,8 @@
 void send_icmp_host_unreachable(struct sr_instance *sr, struct sr_arpreq *req);
 void send_arp_request(struct sr_instance *sr, struct sr_arpreq *req);
 
-/* 
- * This function gets called every second. For each request sent out, we keep
- * checking whether we should resend an request or destroy the arp request.
- * See the comments in the header file for an idea of what it should look like.
- */
 
- /*Alan Comment: not called every second, only called when ARP replies */
+ /*Go through the ARP entries and send outstanding packets */
 void sr_arpreq_send_packets(struct sr_instance *sr, struct sr_arpreq *req)
 {
 	struct sr_packet *cur;
@@ -32,7 +27,7 @@ void sr_arpreq_send_packets(struct sr_instance *sr, struct sr_arpreq *req)
 	cur = req->packets;
 	while (cur != 0) {
 		ip_hdr = (struct sr_ip_hdr *)cur->buf;
-		sr_encap_and_send_pkt(sr,
+		sr_add_ethheader(sr,
 						 	 						cur->buf, 
 						 							cur->len, 
 						  						ip_hdr->ip_dst,
@@ -333,7 +328,7 @@ void send_arp_request(struct sr_instance *sr, struct sr_arpreq *req)
 	arp_hdr.ar_tip = req->ip;
 	
 	/* Encapsulate and attempt to send it. */
-	sr_encap_and_send_pkt(sr, 
+	sr_add_ethheader(sr, 
 					    		   	  (uint8_t *)&arp_hdr, 
 					    			 		sizeof(struct sr_arp_hdr), 
 					    			 		req->ip,
